@@ -1,39 +1,17 @@
-#!/bin/bash
-
-# Check if the number of arguments is correct
-if [ "$#" -ne 2 ]; then
-  echo "Error: You must specify exactly two arguments: a directory and a search string."
-  exit 1
-fi
-
-# Assign arguments to variables
+#!/bin/sh
 filesdir=$1
 searchstr=$2
 
-# Check if the provided directory exists and is a directory
-if [ ! -d "$filesdir" ]; then
-  echo "Error: The specified path '$filesdir' is not a directory or does not exist."
-  exit 1
+if [ $# -ne 2 ]; then
+    echo "Illegal number of parameters" && exit 1
 fi
 
-# Initialize counters
-file_count=0
-matching_lines_count=0
+if ! [ -d "$filesdir" ]; then
+    echo "filesdir must be a directory" && exit 1 
+fi
 
-# Find all files in the directory and subdirectories
-while IFS= read -r -d '' file; do
-  if [ -f "$file" ]; then
-    # Increment file count
-    ((file_count++))
-    
-    # Search for matching lines in the file
-    while IFS= read -r line; do
-      if [[ "$line" == *"$searchstr"* ]]; then
-        ((matching_lines_count++))
-      fi
-    done < "$file"
-  fi
-done < <(find "$filesdir" -type f -print0)
+Y=$(grep -r $searchstr $filesdir | wc -l)
 
-# Print the results
-echo "The number of files are $file_count and the number of matching lines are $matching_lines_count"
+X=$(grep -rl $searchstr $filesdir | wc -l) 
+
+echo "The number of files are $X and the number of matching lines are $Y"
