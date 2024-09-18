@@ -32,8 +32,8 @@ rm -f writer  # Remove any previous build of the writer application
 
 # Compile the writer application
 echo "Compiling the writer application"
-make clean
-make
+# make clean
+# make
 
 rm -rf "${WRITEDIR}"
 

@@ -1,5 +1,12 @@
 #include "systemcalls.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdarg.h>
+#include <sys/wait.h>
+#include <stdbool.h>
+
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -16,8 +23,16 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+     int returnCode = system(cmd);
+ 
+    // checking if the command was executed successfully
+    if (returnCode == 0) {
+        return true;
+    }
+    else {
+        return false;    
+    } 
+    
 }
 
 /**
@@ -59,6 +74,35 @@ bool do_exec(int count, ...)
  *
 */
 
+    // Create a child process
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork failed");
+        va_end(args);
+        return false;  // Fork failed
+    }
+
+    if (pid == 0) {  // Child process
+        // Execute the command
+        if (execv(command[0], command) == -1) {
+            perror("execv failed");
+            exit(EXIT_FAILURE);  // Exit child process on failure
+        }
+    } else {  // Parent process
+        int status;
+        // Wait for the child process to finish
+        if (waitpid(pid, &status, 0) == -1) {
+            perror("waitpid failed");
+            va_end(args);
+            return false;  // Wait failed
+        }
+
+        // Check if the child exited normally
+        if (WIFEXITED(status)) {
+            return WEXITSTATUS(status) == 0;  // Return true if exit status is 0
+        }
+    }
+
     va_end(args);
 
     return true;
@@ -92,6 +136,52 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+
+    // Create a child process
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork failed");
+        va_end(args);
+        return false;  // Fork failed
+    }
+
+    if (pid == 0) {  // Child process
+        // Open the output file
+        FILE *file = fopen(outputfile, "w");
+        if (!file) {
+            perror("Failed to open output file");
+            exit(EXIT_FAILURE);  // Exit child process on failure
+        }
+        
+        // Redirect standard output to the file
+        int fd = fileno(file);
+        if (dup2(fd, STDOUT_FILENO) < 0) {
+            perror("dup2 failed");
+            fclose(file);
+            exit(EXIT_FAILURE);  // Exit child process on failure
+        }
+        
+        fclose(file);  // Close the file descriptor, it's no longer needed
+
+        // Execute the command
+        if (execv(command[0], command) == -1) {
+            perror("execv failed");
+            exit(EXIT_FAILURE);  // Exit child process on failure
+        }
+    } else {  // Parent process
+        int status;
+        // Wait for the child process to finish
+        if (waitpid(pid, &status, 0) == -1) {
+            perror("waitpid failed");
+            va_end(args);
+            return false;  // Wait failed
+        }
+
+        // Check if the child exited normally
+        if (WIFEXITED(status)) {
+            return WEXITSTATUS(status) == 0;  // Return true if exit status is 0
+        }
+    }
 
     va_end(args);
 
